@@ -21,9 +21,8 @@
     .modal-content { background:white; width:100%; max-width:420px; margin:0 auto; border-radius:24px 24px 0 0; padding:24px; max-height:85vh; overflow-y:auto; }
     label { display:block; margin-bottom:8px; font-size:14px; color:var(--accent); }
     input, select, textarea { width:100%; padding:12px; border:1px solid #ddd; border-radius:12px; margin-bottom:12px; font-family:inherit; box-sizing:border-box; }
-    .price-breakdown { background:#f8f1e9; padding:16px; border-radius:16px; margin:16px 0; }
-    .donate-option { background:#f8f1e9; padding:16px; border-radius:16px; margin-bottom:12px; text-align:center; font-weight:600; cursor:pointer; }
-    .loading-overlay { position:fixed; inset:0; background:white; display:flex; justify-content:center; align-items:center; z-index:1000; }
+    .tool-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee; }
+    .timer-display { font-size: 20px; font-weight: 700; color: var(--yarn); display: block; margin-bottom: 4px; }
   </style>
 </head>
 <body>
@@ -95,17 +94,13 @@
     let stash = [];
     let patterns = [];
     let projects = [];
-    let timers = {};
+    let activeTimers = {};
 
     // --- AUTH LOGIC ---
     supabaseClient.auth.onAuthStateChange((event, session) => {
       currentUser = session?.user || null;
       document.getElementById('user-status').textContent = currentUser ? currentUser.email.split('@')[0] : 'Login';
-      if (currentUser) {
-        loadAllData();
-      } else {
-        clearData();
-      }
+      if (currentUser) loadAllData(); else clearData();
     });
 
     function handleAuthAction() {
@@ -118,22 +113,21 @@
 
     function showLoginModal() {
       showModal(`
-        <h3 style="font-size:20px; font-weight:600; margin-bottom:20px;">Join the Nest</h3>
+        <h3>Join the Nest</h3>
         <input id="email" placeholder="Email" type="email">
         <input id="password" placeholder="Password" type="password">
         <button onclick="processAuth()" class="btn-primary" style="width:100%;">Login / Sign Up</button>
-        <button onclick="closeModal()" style="width:100%; margin-top:12px; padding:14px; background:none; border:1px solid #ddd; border-radius:9999px;">Cancel</button>
       `);
     }
 
     async function processAuth() {
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
-      let { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      let { error } = await supabaseClient.auth.signInWithPassword({ email, password });
       if (error) {
-        ({ data, error } = await supabaseClient.auth.signUp({ email, password }));
-        if (error) return alert(error.message);
-        alert("Check your email for a confirmation link!");
+        let { error: signupErr } = await supabaseClient.auth.signUp({ email, password });
+        if (signupErr) return alert(signupErr.message);
+        alert("Check email for link!");
       }
       closeModal();
     }
@@ -143,12 +137,12 @@
       callback();
     }
 
-    // --- DATA FETCHING ---
+    // --- DATA ---
     async function loadAllData() {
       const [sRes, pRes, prRes] = await Promise.all([
         supabaseClient.from('stash').select('*').order('created_at', { ascending: false }),
         supabaseClient.from('patterns').select('*').order('created_at', { ascending: false }),
-        supabaseClient.from('projects').select('*, patterns(*)').order('created_at', { ascending: false })
+        supabaseClient.from('projects').select('*').order('created_at', { ascending: false })
       ]);
       stash = sRes.data || [];
       patterns = pRes.data || [];
@@ -167,165 +161,166 @@
         <h3>Add to Stash</h3>
         <select id="item-type" onchange="toggleStashFields()">
           <option value="yarn">Yarn</option>
-          <option value="hook">Crochet Hook</option>
-          <option value="needle">Knitting Needle</option>
+          <option value="hook">Hook</option>
+          <option value="needle">Needle</option>
         </select>
-        <input id="brand" placeholder="Brand/Manufacturer">
+        <input id="brand" placeholder="Brand">
         <div id="yarn-fields">
           <input id="color" placeholder="Colorway">
-          <input id="weight" placeholder="Weight (e.g. Worsted)">
           <input id="skeins" type="number" placeholder="Skeins">
-          <input id="cost" type="number" step="0.01" placeholder="Cost per skein">
         </div>
-        <div id="tool-fields" style="display:none;">
-          <input id="size" placeholder="Size (e.g. 5.0mm)">
-        </div>
-        <button onclick="saveStashItem()" class="btn-primary" style="width:100%;">Save to Stash</button>
+        <button onclick="saveStashItem()" class="btn-primary" style="width:100%;">Save</button>
       `);
     }
 
     function toggleStashFields() {
       const isYarn = document.getElementById('item-type').value === 'yarn';
       document.getElementById('yarn-fields').style.display = isYarn ? 'block' : 'none';
-      document.getElementById('tool-fields').style.display = isYarn ? 'none' : 'block';
     }
 
     async function saveStashItem() {
-      const type = document.getElementById('item-type').value;
-      const brand = document.getElementById('brand').value;
       const item = {
         user_id: currentUser.id,
-        type, brand,
-        name: type === 'yarn' ? `${brand} - ${document.getElementById('color').value}` : `${brand} ${type}`,
-        color: document.getElementById('color').value,
-        weight: document.getElementById('weight').value,
-        skeins: parseInt(document.getElementById('skeins').value) || 0,
-        cost: parseFloat(document.getElementById('cost').value) || 0,
-        size: document.getElementById('size').value
+        type: document.getElementById('item-type').value,
+        brand: document.getElementById('brand').value,
+        name: document.getElementById('brand').value + " " + document.getElementById('item-type').value
       };
       await supabaseClient.from('stash').insert([item]);
       loadAllData(); closeModal();
     }
 
-    async function deleteStashItem(id) {
-      if(confirm("Remove from stash?")) {
-        await supabaseClient.from('stash').delete().eq('id', id);
-        loadAllData();
-      }
-    }
-
     // --- PATTERNS ---
     function showPatternTypeChoice() {
       showModal(`
-        <h3 style="text-align:center;">Add Pattern</h3>
-        <button onclick="showManualPatternForm()" class="btn-primary" style="width:100%; margin-bottom:12px;">Manual Entry</button>
-        <button onclick="showSourcePatternForm()" class="btn-primary" style="width:100%; background:var(--accent);">Link URL/File</button>
+        <h3>Add Pattern</h3>
+        <button onclick="showManualPatternForm()" class="btn-primary" style="width:100%; margin-bottom:12px;">Write Instructions</button>
+        <button onclick="showSourcePatternForm()" class="btn-primary" style="width:100%; background:var(--accent);">Link URL / File</button>
       `);
+    }
+
+    function showSourcePatternForm() {
+      showModal(`
+        <h3>Pattern Source</h3>
+        <input id="pat-name" placeholder="Pattern Name">
+        <input id="pat-link" placeholder="Paste URL Link (e.g. Ravelry/Etsy)">
+        <label>Or Upload File (Coming Soon)</label>
+        <button onclick="saveLinkedPattern()" class="btn-primary" style="width:100%;">Save Link</button>
+      `);
+    }
+
+    async function saveLinkedPattern() {
+      const name = document.getElementById('pat-name').value;
+      const link = document.getElementById('pat-link').value;
+      await supabaseClient.from('patterns').insert([{ user_id: currentUser.id, name, source_url: link }]);
+      loadAllData(); closeModal();
     }
 
     function showManualPatternForm() {
       showModal(`
         <h3>New Pattern</h3>
         <input id="pat-name" placeholder="Pattern Name">
-        <select id="craft-type"><option>Crochet</option><option>Knitting</option></select>
-        <textarea id="pat-instructions" placeholder="Instructions..." rows="5"></textarea>
-        <button onclick="savePattern()" class="btn-primary" style="width:100%;">Save Pattern</button>
+        <textarea id="pat-instructions" placeholder="Enter instructions here..." rows="6"></textarea>
+        <button onclick="saveManualPattern()" class="btn-primary" style="width:100%;">Save Pattern</button>
       `);
     }
 
-    async function savePattern() {
+    async function saveManualPattern() {
       const name = document.getElementById('pat-name').value;
-      const craft_type = document.getElementById('craft-type').value;
       const formatted = document.getElementById('pat-instructions').value;
-      await supabaseClient.from('patterns').insert([{ user_id: currentUser.id, name, craft_type, formatted }]);
+      await supabaseClient.from('patterns').insert([{ user_id: currentUser.id, name, formatted }]);
       loadAllData(); closeModal();
     }
 
     // --- PROJECTS ---
     function showNewProjectChoice() {
-      let options = patterns.map((p, i) => `<option value="${p.id}">${p.name}</option>`).join('');
       showModal(`
         <h3>New Project</h3>
         <input id="proj-name" placeholder="Project Name">
         <select id="proj-craft"><option>Crochet</option><option>Knitting</option></select>
-        <label>Link Pattern (Optional)</label>
-        <select id="proj-pat"><option value="">None</option>${options}</select>
-        <button onclick="saveProject()" class="btn-primary" style="width:100%;">Start Project</button>
+        <button onclick="saveProject()" class="btn-primary" style="width:100%;">Start</button>
       `);
     }
 
     async function saveProject() {
       const name = document.getElementById('proj-name').value;
       const craft_type = document.getElementById('proj-craft').value;
-      const pattern_id = document.getElementById('proj-pat').value || null;
-      await supabaseClient.from('projects').insert([{ user_id: currentUser.id, name, craft_type, pattern_id }]);
+      await supabaseClient.from('projects').insert([{ user_id: currentUser.id, name, craft_type, rows: 0, total_hours: 0 }]);
       loadAllData(); closeModal();
     }
 
-    async function updateProject(id, updates) {
-      await supabaseClient.from('projects').update(updates).eq('id', id);
-      loadAllData();
+    // --- TOOLS (TIMER & PRICING) ---
+    function toggleTimer(id) {
+      if (activeTimers[id]) {
+        const elapsed = (Date.now() - activeTimers[id].start) / 3600000; // in hours
+        clearInterval(activeTimers[id].interval);
+        updateProjectStats(id, { total_hours: (projects.find(p => p.id === id).total_hours || 0) + elapsed });
+        delete activeTimers[id];
+        document.getElementById(`t-btn-${id}`).innerText = "Start Timer";
+      } else {
+        activeTimers[id] = { start: Date.now(), interval: setInterval(() => updateTimerUI(id), 1000) };
+        document.getElementById(`t-btn-${id}`).innerText = "Stop Timer";
+      }
     }
 
-    // --- UI RENDERING ---
+    function updateTimerUI(id) {
+      const diff = Math.floor((Date.now() - activeTimers[id].start) / 1000);
+      const h = Math.floor(diff/3600).toString().padStart(2,'0');
+      const m = Math.floor((diff%3600)/60).toString().padStart(2,'0');
+      const s = (diff%60).toString().padStart(2,'0');
+      document.getElementById(`timer-${id}`).innerText = `${h}:${m}:${s}`;
+    }
+
+    async function updateProjectStats(id, updates) {
+      await supabaseClient.from('projects').update(updates).eq('id', id);
+      const p = projects.find(proj => proj.id === id);
+      const hours = updates.total_hours || p.total_hours || 0;
+      const mat = parseFloat(document.getElementById(`mat-${id}`).value) || 0;
+      const rate = parseFloat(document.getElementById(`rate-${id}`).value) || 0;
+      document.getElementById(`price-${id}`).innerText = (mat + (rate * hours)).toFixed(2);
+    }
+
+    // --- RENDERING ---
     function renderStash() {
       const grid = document.getElementById('stash-grid');
-      grid.innerHTML = stash.length ? '' : '<p style="text-align:center; padding:40px;">Your stash is empty.</p>';
-      stash.forEach(item => {
-        grid.innerHTML += `
-          <div class="card">
-            <div style="display:flex; justify-content:space-between;">
-              <div>
-                <strong>${item.name}</strong>
-                <div style="font-size:12px; color:var(--accent);">${item.type === 'yarn' ? item.skeins + ' skeins' : item.size}</div>
-              </div>
-              <button onclick="deleteStashItem('${item.id}')" style="color:red; background:none;">&times;</button>
-            </div>
-          </div>`;
-      });
+      grid.innerHTML = stash.map(item => `<div class="card"><strong>${item.name}</strong></div>`).join('');
     }
 
     function renderPatterns() {
       const list = document.getElementById('patterns-list');
-      list.innerHTML = patterns.length ? '' : '<p style="text-align:center; padding:40px;">No patterns saved.</p>';
-      patterns.forEach(p => {
-        list.innerHTML += `<div class="card" onclick="showPatternDetail('${p.id}')"><strong>${p.name}</strong><br><small>${p.craft_type}</small></div>`;
-      });
+      list.innerHTML = patterns.map(p => `
+        <div class="card">
+          <strong>${p.name}</strong>
+          ${p.source_url ? `<br><a href="${p.source_url}" target="_blank" style="color:var(--yarn); font-size:12px;">Open Pattern Link</a>` : ''}
+        </div>`).join('');
     }
 
     function renderProjects() {
       const list = document.getElementById('projects-list');
-      list.innerHTML = projects.length ? '' : '<p style="text-align:center; padding:40px;">No active projects.</p>';
-      projects.forEach((proj, i) => {
-        list.innerHTML += `
-          <div class="card" onclick="showProjectDetail(${i})">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <strong>${proj.name}</strong>
-              <span style="color:var(--yarn)">Row ${proj.rows}</span>
+      list.innerHTML = projects.map(p => `
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <strong>${p.name}</strong>
+            <div style="text-align:right">
+              <span style="color:var(--yarn); font-weight:bold;">Row ${p.rows}</span>
+              <button onclick="updateProjectStats('${p.id}', {rows: ${p.rows + 1}})" style="display:block; font-size:12px;">+ Row</button>
             </div>
-          </div>`;
-      });
-    }
-
-    function showProjectDetail(idx) {
-      const p = projects[idx];
-      showModal(`
-        <h3>${p.name}</h3>
-        <div style="display:flex; justify-content:space-around; margin:20px 0;">
-          <div style="text-align:center;">
-            <div style="font-size:24px; font-weight:bold;">${p.rows}</div>
-            <button onclick="updateProject('${p.id}', {rows: ${p.rows + 1}})">+ Row</button>
           </div>
-          <div style="text-align:center;">
-            <div style="font-size:24px; font-weight:bold;">${p.stitches}</div>
-            <button onclick="updateProject('${p.id}', {stitches: ${p.stitches + 1}})">+ Stitch</button>
+          
+          <div class="tool-row">
+            <div style="border-right:1px solid #eee; padding-right:10px;">
+              <span class="timer-display" id="timer-${p.id}">00:00:00</span>
+              <button id="t-btn-${p.id}" onclick="toggleTimer('${p.id}')" style="background:#eee; padding:4px 8px; border-radius:4px; font-size:11px;">Start Timer</button>
+            </div>
+            <div class="pricing-box">
+              <input type="number" id="mat-${p.id}" placeholder="Mat $" style="margin-bottom:4px; padding:4px;" onchange="updateProjectStats('${p.id}', {material_cost: this.value})">
+              <input type="number" id="rate-${p.id}" placeholder="Rate $" style="margin-bottom:4px; padding:4px;" onchange="updateProjectStats('${p.id}', {hourly_rate: this.value})">
+              <div style="font-size:12px; font-weight:bold;">Price: $<span id="price-${p.id}">${((p.material_cost || 0) + ((p.hourly_rate || 0) * (p.total_hours || 0))).toFixed(2)}</span></div>
+            </div>
           </div>
         </div>
-        <button onclick="closeModal()" style="width:100%; margin-top:20px;">Close</button>
-      `);
+      `).join('');
     }
 
-    // --- UTILS ---
     function switchTab(n) {
       [0,1,2].forEach(i => {
         document.getElementById(`content-${i}`).style.display = i === n ? 'block' : 'none';
@@ -334,14 +329,14 @@
     }
 
     function showModal(html) {
-      document.getElementById('modal-content').innerHTML = html;
+      document.getElementById('modal-content').innerHTML = html + '<button onclick="closeModal()" style="width:100%; margin-top:12px; background:#eee; padding:12px; border-radius:9999px;">Close</button>';
       document.getElementById('modal').style.display = 'flex';
     }
 
     function closeModal() { document.getElementById('modal').style.display = 'none'; }
-    function showDonateModal() { alert("Thanks for your support! (Donations are simulated)"); }
-
-    window.onload = () => { if(!currentUser) renderStash(); };
+    function showDonateModal() { alert("Support YarnNest! (Simulation)"); }
+    
+    window.onload = () => { if(!currentUser) loadAllData(); };
   </script>
 </body>
 </html>
