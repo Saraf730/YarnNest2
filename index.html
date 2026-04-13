@@ -23,10 +23,10 @@
     input, select, textarea { width:100%; padding:12px; border:1px solid #ddd; border-radius:12px; margin-bottom:12px; font-family:inherit; box-sizing:border-box; }
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .stash-controls { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
-    .counter-btn { width: 32px; height: 32px; border-radius: 8px; background: #eee; display: flex; align-items: center; justify-content: center; }
+    .counter-btn { width: 32px; height: 32px; border-radius: 8px; background: #eee; display: flex; align-items: center; justify-content: center; font-weight: bold; border: none; }
     .price-tool { background: #fdfaf7; padding: 15px; border-radius: 16px; margin-top: 15px; border: 1px solid #eee; }
     .timer-display { font-size: 32px; font-weight: 800; color: var(--yarn); text-align: center; margin: 10px 0; font-variant-numeric: tabular-nums; }
-    .delete-btn { color: var(--delete); background: #fff1f0; padding: 12px; border-radius: 12px; font-size: 14px; margin-top: 20px; width: 100%; text-align: center; }
+    .delete-btn { color: var(--delete); background: #fff1f0; padding: 12px; border-radius: 12px; font-size: 14px; margin-top: 20px; width: 100%; text-align: center; border: none; }
 
     .support-container { position: relative; display: inline-block; }
     .support-menu { 
@@ -52,7 +52,7 @@
       </div>
       <div style="display:flex; gap:8px; align-items: center;">
         <div class="support-container">
-            <button style="padding:8px 16px; background: #fff1ed; color:var(--yarn); border-radius:9999px; font-size:12px; font-weight:bold;">
+            <button style="padding:8px 16px; background: #fff1ed; color:var(--yarn); border-radius:9999px; font-size:12px; font-weight:bold; border:none;">
                 ☕ Support
             </button>
             <div class="support-menu">
@@ -137,7 +137,7 @@
 
     function clearData() { stash = []; patterns = []; projects = []; renderStash(); renderPatterns(); renderProjects(); }
 
-    // --- STASH LOGIC ---
+    // --- STASH ---
     function showAddToolModal() {
         showModal(`
             <h3>Add Tool</h3>
@@ -192,7 +192,7 @@
               <strong>${item.name}</strong>
               <div style="font-size:13px; color:var(--accent);">${item.price > 0 ? '$'+item.price.toFixed(2)+' per skein' : 'Utility Tool'}</div>
             </div>
-            <button onclick="removeFromStash('${item.id}')" style="color:#ffcccb; background:none; font-size: 18px;"><i class="fa-solid fa-circle-xmark"></i></button>
+            <button onclick="removeFromStash('${item.id}')" style="color:#ffcccb; background:none; font-size: 18px; border:none;"><i class="fa-solid fa-circle-xmark"></i></button>
           </div>
           <div class="stash-controls">
             <button class="counter-btn" onclick="updateStashQty('${item.id}', -1)">-</button>
@@ -203,7 +203,7 @@
       `).join('');
     }
 
-    // --- PATTERNS LOGIC ---
+    // --- PATTERNS ---
     function showPatternTypeChoice() {
       showModal(`
         <h3>New Pattern</h3>
@@ -267,7 +267,7 @@
       `).join('');
     }
 
-    // --- PROJECTS LOGIC ---
+    // --- PROJECTS ---
     function showNewProjectModal() {
       showModal(`
         <h3>New Project</h3>
@@ -290,7 +290,7 @@
       const p = projects.find(x => x.id === id);
       showModal(`
         <h3 style="margin-bottom:4px;">${p.name}</h3>
-        <div style="font-size:12px; color:var(--accent); margin-bottom:20px;">${p.craft_type} Project</div>
+        <div style="font-size:12px; color:var(--accent); margin-bottom:20px;">${p.craft_type} Workspace</div>
         
         <div class="grid-2" style="text-align:center; margin-bottom:20px;">
           <div style="background:#f0f0f0; padding:15px; border-radius:16px;">
@@ -315,7 +315,7 @@
           <label>Project Timer</label>
           <div class="timer-display" id="timer-${p.id}">${formatTime(p.time_seconds || 0)}</div>
           <button id="t-btn-${p.id}" onclick="toggleTimer('${p.id}')" class="btn-primary" style="width:100%; background:var(--accent);">
-            ${activeTimers[p.id] ? 'Stop Timer' : 'Start Timer'}
+            ${activeTimers[p.id] ? 'Stop & Save Time' : 'Start Timer'}
           </button>
         </div>
 
@@ -333,7 +333,7 @@
             <span>ESTIMATED PRICE:</span>
             <span id="total-${p.id}" style="color:var(--yarn); font-size:18px;">$${calculatePrice(p)}</span>
           </div>
-          <button onclick="saveProjectPricing('${p.id}')" style="width:100%; margin-top:10px; font-size:11px; color:var(--accent); background:none; text-decoration:underline;">Save Pricing Values</button>
+          <button onclick="saveProjectPricing('${p.id}')" style="width:100%; margin-top:10px; font-size:11px; color:var(--accent); background:none; text-decoration:underline; border:none;">Save Pricing Values</button>
         </div>
 
         <button onclick="archiveProject('${p.id}')" class="delete-btn"><i class="fa-solid fa-box-archive"></i> Archive Project</button>
@@ -365,7 +365,7 @@
         };
         await supabaseClient.from('projects').update(updates).eq('id', id);
         loadAllData();
-        alert("Pricing settings updated!");
+        alert("Pricing settings saved!");
     }
 
     async function updateProjectValue(id, field, delta) {
@@ -402,7 +402,7 @@
     }
 
     async function archiveProject(id) {
-      if(confirm("Finished? This will move the project to your archive.")) {
+      if(confirm("Finish and archive this project?")) {
         await supabaseClient.from('projects').update({ archived: true }).eq('id', id);
         loadAllData(); closeModal();
       }
@@ -428,7 +428,7 @@
     }
 
     function showModal(html) {
-      document.getElementById('modal-content').innerHTML = html + '<button onclick="closeModal()" style="width:100%; margin-top:12px; background:#f0f0f0; padding:14px; border-radius:9999px; font-weight:bold; color:var(--accent);">Cancel / Close</button>';
+      document.getElementById('modal-content').innerHTML = html + '<button onclick="closeModal()" style="width:100%; margin-top:12px; background:#f0f0f0; padding:14px; border-radius:9999px; font-weight:bold; color:var(--accent); border:none;">Cancel / Close</button>';
       document.getElementById('modal').style.display = 'flex';
     }
 
