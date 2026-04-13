@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>🧶 YarnNest</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Supabase script in head - reliable on Vercel -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root { --yarn: #e07a5f; --bg: #f8f1e9; --text: #3d2a1f; --accent: #8c6f5e; }
     body { margin:0; font-family:system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; touch-action:manipulation; }
@@ -55,7 +57,7 @@
   </nav>
 
   <div style="max-width:640px; margin:0 auto; padding:16px;">
-    <!-- Stash -->
+    <!-- Stash Tab -->
     <div id="content-0">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
         <h2 style="font-size:24px; font-weight:600;">My Stash</h2>
@@ -64,7 +66,7 @@
       <div id="stash-grid"></div>
     </div>
 
-    <!-- Patterns -->
+    <!-- Patterns Tab -->
     <div id="content-1" style="display:none;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
         <h2 style="font-size:24px; font-weight:600;">Patterns</h2>
@@ -73,7 +75,7 @@
       <div id="patterns-list"></div>
     </div>
 
-    <!-- Projects -->
+    <!-- Projects Tab -->
     <div id="content-2" style="display:none;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
         <h2 style="font-size:24px; font-weight:600;">My Projects</h2>
@@ -89,28 +91,16 @@
   </div>
 
   <script>
-    let supabaseClient = null;
+    // Supabase (script already loaded in head)
+    const SUPABASE_URL = 'https://oygyogdeahqgfbonnvhj.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_mx180Q9466CH5_UARdS2kw_NITjI5hK';
+    const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
     let currentUser = null;
     let stash = [];
     let patterns = [];
     let projects = [];
     let timers = {};
-    let supabaseReady = false;
-
-    function loadSupabase() {
-      if (supabaseClient) return;
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-      script.onload = () => {
-        const url = 'https://oygyogdeahqgfbonnvhj.supabase.co';
-        const key = 'sb_publishable_mx180Q9466CH5_UARdS2kw_NITjI5hK';
-        supabaseClient = Supabase.createClient(url, key);
-        supabaseReady = true;
-        document.getElementById('login-btn').classList.remove('loading');
-        console.log('%c✅ Supabase is ready!', 'color:#e07a5f');
-      };
-      document.head.appendChild(script);
-    }
 
     function switchTab(n) {
       document.getElementById('content-0').style.display = (n === 0) ? 'block' : 'none';
@@ -145,16 +135,12 @@
     }
 
     async function handleAuth() {
-      if (!supabaseReady) {
-        alert("Supabase is still loading. Please wait a few seconds and try again.");
-        return;
-      }
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
       if (!email || !password) return alert("Email and password required");
 
-      let { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-      if (error) ({ data, error } = await supabaseClient.auth.signUp({ email, password }));
+      let { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) ({ data, error } = await supabase.auth.signUp({ email, password }));
       if (error) return alert(error.message);
 
       currentUser = data.user || data.session?.user;
@@ -376,7 +362,7 @@
       showModal(html);
     }
 
-    // Projects + Timer + Pricing
+    // Projects
     function showNewProjectChoice() {
       const html = `
         <h3 style="font-size:20px; font-weight:600; margin-bottom:24px; text-align:center;">New Project</h3>
@@ -407,7 +393,15 @@
       const projectName = document.getElementById('project-name').value.trim() || "Untitled Project";
       if (!patternIndex) return alert("Please select a pattern");
       const selectedPattern = patterns[patternIndex];
-      projects.push({ id: Date.now(), name: projectName, craftType: selectedPattern.craftType, pattern: selectedPattern, rows: 0, stitches: 0, time: 0 });
+      projects.push({
+        id: Date.now(),
+        name: projectName,
+        craftType: selectedPattern.craftType,
+        pattern: selectedPattern,
+        rows: 0,
+        stitches: 0,
+        time: 0
+      });
       renderProjects();
       closeModal();
       alert(`✅ Project "${projectName}" created!`);
@@ -535,7 +529,7 @@
 
       document.getElementById('price-breakdown-text').innerHTML = `
         Materials: $${materials.toFixed(2)}<br>
-        Labor: $${labor.toFixed(2)}<br>
+        Labor (${hours.toFixed(1)} hrs × $${rate}/hr): $${labor.toFixed(2)}<br>
         Other: $${other.toFixed(2)}<br>
         <strong>Total Cost: $${totalCost.toFixed(2)}</strong>
       `;
@@ -588,9 +582,7 @@
       switchTab(0);
       renderStash();
       renderProjects();
-      loadSupabase();
-      document.getElementById('login-btn').classList.add('loading');
-      console.log("%c✅ Full YarnNest with disabled login button loaded!", "color:#e07a5f; font-size:16px");
+      console.log("%c✅ Full YarnNest with real Supabase loaded on Vercel!", "color:#e07a5f; font-size:16px");
     };
   </script>
 </body>
