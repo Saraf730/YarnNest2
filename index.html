@@ -21,6 +21,7 @@
     label { display:block; margin-bottom:8px; font-size:14px; color:var(--accent); }
     .price-breakdown { background:#f8f1e9; padding:16px; border-radius:16px; margin:16px 0; }
     .donate-option { background:#f8f1e9; padding:16px; border-radius:16px; margin-bottom:12px; text-align:center; font-weight:600; cursor:pointer; }
+    #login-btn.loading { opacity:0.6; pointer-events:none; cursor:wait; }
   </style>
 </head>
 <body>
@@ -38,7 +39,7 @@
         <button onclick="showDonateModal()" style="padding:8px 16px; background:white; border:1px solid var(--yarn); color:var(--yarn); border-radius:9999px; font-size:14px;">
           <i class="fa-solid fa-heart"></i> Donate
         </button>
-        <button onclick="showLoginModal()" style="padding:8px 16px; background:white; border:1px solid var(--yarn); color:var(--yarn); border-radius:9999px; font-size:14px;">
+        <button id="login-btn" onclick="showLoginModal()" style="padding:8px 16px; background:white; border:1px solid var(--yarn); color:var(--yarn); border-radius:9999px; font-size:14px;">
           <i class="fa-solid fa-user"></i> <span id="user-status">Login</span>
         </button>
       </div>
@@ -88,7 +89,6 @@
   </div>
 
   <script>
-    // Safe Supabase loading with ready promise
     let supabaseClient = null;
     let currentUser = null;
     let stash = [];
@@ -106,14 +106,10 @@
         const key = 'sb_publishable_mx180Q9466CH5_UARdS2kw_NITjI5hK';
         supabaseClient = Supabase.createClient(url, key);
         supabaseReady = true;
-        console.log('%c✅ Supabase loaded safely on Vercel', 'color:#e07a5f');
+        document.getElementById('login-btn').classList.remove('loading');
+        console.log('%c✅ Supabase is ready!', 'color:#e07a5f');
       };
       document.head.appendChild(script);
-    }
-
-    function getSupabase() {
-      if (!supabaseClient) loadSupabase();
-      return supabaseClient;
     }
 
     function switchTab(n) {
@@ -149,15 +145,10 @@
     }
 
     async function handleAuth() {
-      const supabase = getSupabase();
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
-      if (!email || !password) return alert("Email and password required");
-
-      // Wait up to 3 seconds for Supabase to load
       if (!supabaseReady) {
         await new Promise(resolve => setTimeout(resolve, 3000));
         if (!supabaseReady) {
+          const email = document.getElementById('email').value.trim() || "demo@user.com";
           currentUser = { email };
           document.getElementById('user-status').textContent = email.split('@')[0];
           closeModal();
@@ -165,6 +156,11 @@
           return;
         }
       }
+
+      const supabase = supabaseClient;
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      if (!email || !password) return alert("Email and password required");
 
       let { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) ({ data, error } = await supabase.auth.signUp({ email, password }));
@@ -189,22 +185,18 @@
         </div>
         <button onclick="processDonation()" class="btn-primary" style="width:100%; margin-bottom:12px;">Donate Now</button>
         <button onclick="closeModal()" style="width:100%; padding:14px; background:none; border:1px solid #ddd; border-radius:9999px;">Maybe later</button>
-        <p style="font-size:12px; color:var(--accent); text-align:center; margin-top:16px;">Real payments coming soon.</p>
       `;
       showModal(html);
     }
 
-    function selectDonation(amount) {
-      document.getElementById('custom-donation').value = amount;
-    }
-
+    function selectDonation(amount) { document.getElementById('custom-donation').value = amount; }
     function processDonation() {
       const amount = document.getElementById('custom-donation').value || "5";
       closeModal();
       alert(`❤️ Thank you for your $${amount} donation!`);
     }
 
-    // === Stash, Patterns, Projects, Timer, Pricing (full working code) ===
+    // Stash
     function showAddStashModal() {
       const html = `
         <h3 style="font-size:20px; font-weight:600; margin-bottom:20px;">Add to Stash</h3>
@@ -280,7 +272,7 @@
       }
     }
 
-    // Patterns (full)
+    // Patterns
     function showPatternTypeChoice() {
       const html = `
         <h3 style="font-size:20px; font-weight:600; margin-bottom:24px; text-align:center;">How do you want to add the pattern?</h3>
@@ -497,15 +489,12 @@
 
     function renderProjects() {
       const container = document.getElementById('projects-list');
-      container.innerHTML = '';
+      container.innerHTML = projects.length === 0 ? '<p style="padding:40px; color:var(--accent);">No projects yet.</p>' : '';
       projects.forEach((proj, i) => {
         const div = document.createElement('div');
         div.className = 'card';
         div.style.cursor = 'pointer';
-        div.innerHTML = `
-          <div style="font-weight:600;">${proj.name}</div>
-          <div style="font-size:13px; color:var(--accent);">Craft: ${proj.craftType || 'N/A'}</div>
-        `;
+        div.innerHTML = `<div style="font-weight:600;">${proj.name}</div><div style="font-size:13px; color:var(--accent);">Craft: ${proj.craftType || 'N/A'}</div>`;
         div.onclick = () => showProjectDetail(i);
         container.appendChild(div);
       });
@@ -647,7 +636,8 @@
       renderStash();
       renderProjects();
       loadSupabase();
-      console.log("%c✅ YarnNest is ready on Vercel with safe Supabase loading!", "color:#e07a5f; font-size:16px");
+      document.getElementById('login-btn').classList.add('loading');
+      console.log("%c✅ Full YarnNest loaded with login button disabled until Supabase ready!", "color:#e07a5f; font-size:16px");
     };
   </script>
 </body>
