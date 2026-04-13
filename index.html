@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>🧶 YarnNest</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Supabase script in head - works reliably on Vercel -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root { --yarn: #e07a5f; --bg: #f8f1e9; --text: #3d2a1f; --accent: #8c6f5e; }
     body { margin:0; font-family:system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; touch-action:manipulation; }
@@ -88,33 +90,21 @@
   </div>
 
   <script>
-    // Safe Supabase loading with ready promise
-    let supabaseClient = null;
+    // Use Vercel env vars if set, otherwise your keys
+    const SUPABASE_URL = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SUPABASE_URL) ||
+                         (window.ENV_SUPABASE_URL) ||
+                         'https://oygyogdeahqgfbonnvhj.supabase.co';
+    const SUPABASE_ANON_KEY = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SUPABASE_ANON_KEY) ||
+                              (window.ENV_SUPABASE_ANON_KEY) ||
+                              'sb_publishable_mx180Q9466CH5_UARdS2kw_NITjI5hK';
+
+    const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
     let currentUser = null;
     let stash = [];
     let patterns = [];
     let projects = [];
     let timers = {};
-    let supabaseReady = false;
-
-    function loadSupabase() {
-      if (supabaseClient) return;
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-      script.onload = () => {
-        const url = 'https://oygyogdeahqgfbonnvhj.supabase.co';
-        const key = 'sb_publishable_mx180Q9466CH5_UARdS2kw_NITjI5hK';
-        supabaseClient = Supabase.createClient(url, key);
-        supabaseReady = true;
-        console.log('%c✅ Supabase loaded safely on Vercel', 'color:#e07a5f');
-      };
-      document.head.appendChild(script);
-    }
-
-    function getSupabase() {
-      if (!supabaseClient) loadSupabase();
-      return supabaseClient;
-    }
 
     function switchTab(n) {
       document.getElementById('content-0').style.display = (n === 0) ? 'block' : 'none';
@@ -149,25 +139,14 @@
     }
 
     async function handleAuth() {
-      const supabase = getSupabase();
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
       if (!email || !password) return alert("Email and password required");
 
-      // Wait up to 3 seconds for Supabase to load
-      if (!supabaseReady) {
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        if (!supabaseReady) {
-          currentUser = { email };
-          document.getElementById('user-status').textContent = email.split('@')[0];
-          closeModal();
-          alert("✅ Demo login (Supabase still loading). Try again in a few seconds or refresh.");
-          return;
-        }
-      }
-
       let { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) ({ data, error } = await supabase.auth.signUp({ email, password }));
+      if (error) {
+        ({ data, error } = await supabase.auth.signUp({ email, password }));
+      }
       if (error) return alert(error.message);
 
       currentUser = data.user || data.session?.user;
@@ -204,7 +183,7 @@
       alert(`❤️ Thank you for your $${amount} donation!`);
     }
 
-    // === Stash, Patterns, Projects, Timer, Pricing (full working code) ===
+    // === All your Stash, Patterns, Projects, Timer, Pricing functions (exact same as the working clean version) ===
     function showAddStashModal() {
       const html = `
         <h3 style="font-size:20px; font-weight:600; margin-bottom:20px;">Add to Stash</h3>
@@ -280,7 +259,7 @@
       }
     }
 
-    // Patterns (full)
+    // Patterns, Projects, Timer, Pricing (all the same as your last working clean version)
     function showPatternTypeChoice() {
       const html = `
         <h3 style="font-size:20px; font-weight:600; margin-bottom:24px; text-align:center;">How do you want to add the pattern?</h3>
@@ -646,8 +625,7 @@
       switchTab(0);
       renderStash();
       renderProjects();
-      loadSupabase();
-      console.log("%c✅ YarnNest is ready on Vercel with safe Supabase loading!", "color:#e07a5f; font-size:16px");
+      console.log("%c✅ YarnNest is live on Vercel with real Supabase auth!", "color:#e07a5f; font-size:16px");
     };
   </script>
 </body>
