@@ -1,236 +1,431 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YarnNest | For Crocheters & Knitters</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>🧶 YarnNest</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root { --yarn: #e07a5f; --bg: #f8f1e9; --text: #3d2a1f; --accent: #8c6f5e; --delete: #d9534f; }
+    body { margin:0; font-family:system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; touch-action:manipulation; }
+    header { background:white; padding:16px; box-shadow:0 2px 4px rgba(0,0,0,0.1); position:sticky; top:0; z-index:50; }
+    nav { background:white; border-bottom:1px solid #ddd; position:sticky; top:73px; z-index:40; }
+    .nav-btn { padding:16px 8px; font-size:15px; flex:1; text-align:center; border:none; background:none; border-bottom:3px solid transparent; cursor:pointer; }
+    .nav-active { border-bottom-color:var(--yarn); color:var(--yarn); font-weight:600; }
+    button { touch-action: manipulation; transition: transform 0.1s; cursor:pointer; border:none; }
+    button:active { transform: scale(0.95); }
+    .btn-primary { background:var(--yarn); color:white; padding:14px 20px; border-radius:9999px; font-weight:500; }
+    .card { background:white; border-radius:24px; padding:20px; margin-bottom:16px; box-shadow:0 2px 8px rgba(0,0,0,0.08); cursor: pointer; position: relative; }
+    .modal { position:fixed; inset:0; background:rgba(0,0,0,0.7); display:none; align-items:flex-end; z-index:100; }
+    .modal-content { background:white; width:100%; max-width:500px; margin:0 auto; border-radius:24px 24px 0 0; padding:24px; max-height:90vh; overflow-y:auto; box-sizing: border-box; }
+    label { display:block; margin-bottom:4px; font-size:12px; font-weight: bold; color:var(--accent); text-transform: uppercase; }
+    input, select, textarea { width:100%; padding:12px; border:1px solid #ddd; border-radius:12px; margin-bottom:12px; font-family:inherit; box-sizing:border-box; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .stash-controls { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+    .counter-btn { width: 32px; height: 32px; border-radius: 8px; background: #eee; display: flex; align-items: center; justify-content: center; }
+    .price-tool { background: #fdfaf7; padding: 15px; border-radius: 16px; margin-top: 15px; }
+    .timer-display { font-size: 32px; font-weight: 800; color: var(--yarn); text-align: center; margin: 10px 0; font-variant-numeric: tabular-nums; }
+    .delete-btn { color: var(--delete); background: none; font-size: 14px; margin-top: 20px; width: 100%; text-align: center; }
+
+    /* Fix for Support Menu Hover */
+    .support-container { position: relative; display: inline-block; }
+    .support-menu { 
+        position: absolute; right: 0; top: 100%; width: 180px; 
+        background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        display: none; padding: 8px 0; z-index: 60;
+    }
+    .support-container:hover .support-menu { display: block; }
+    .support-menu a { display: block; padding: 8px 16px; font-size: 13px; color: var(--text); text-decoration: none; }
+    .support-menu a:hover { background: var(--bg); color: var(--yarn); }
+  </style>
 </head>
-<body class="bg-orange-50 font-sans text-gray-800">
+<body>
 
-    <header class="p-4 bg-white shadow-sm flex justify-between items-center">
-        <div class="flex items-center gap-2">
-            <span class="text-2xl">🧶</span>
-            <div>
-                <h1 class="text-xl font-bold leading-none">YarnNest</h1>
-                <p class="text-xs text-gray-500">for crocheters & knitters</p>
-            </div>
+  <header>
+    <div style="display:flex; align-items:center; justify-content:space-between; max-width:640px; margin:0 auto;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span style="font-size:32px;">🧶</span>
+        <div>
+          <h1 style="margin:0; font-size:24px; font-weight:700;">YarnNest</h1>
+          <p style="margin:0; font-size:12px; color:var(--accent);">for crocheters & knitters</p>
         </div>
-        <div class="flex items-center gap-4">
-            <div class="relative group">
-                <button class="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-bold hover:bg-orange-200 transition">
-                    ☕ Support YarnNest
-                </button>
-                <div class="absolute right-0 mt-2 w-48 bg-white border border-orange-100 rounded-xl shadow-lg hidden group-hover:block z-50 p-2">
-                    <p class="text-[10px] text-gray-400 px-2 mb-2 uppercase font-bold tracking-wider text-center">Buy me a coffee?</p>
-                    <a href="#" class="block px-4 py-2 text-sm hover:bg-orange-50 rounded-lg text-gray-700">$5 - Single Skein</a>
-                    <a href="#" class="block px-4 py-2 text-sm hover:bg-orange-50 rounded-lg text-gray-700">$10 - Project Bag</a>
-                    <a href="#" class="block px-4 py-2 text-sm hover:bg-orange-50 rounded-lg text-gray-700">$25 - Yarn Haul</a>
-                </div>
-            </div>
-            <button class="bg-gray-100 px-4 py-1 rounded-full text-sm flex items-center gap-2">
-                👤 slrtackett
+      </div>
+      <div style="display:flex; gap:8px; align-items: center;">
+        <div class="support-container">
+            <button style="padding:8px 16px; background: #fff1ed; color:var(--yarn); border-radius:9999px; font-size:12px; font-weight:bold;">
+                ☕ Support
             </button>
-        </div>
-    </header>
-
-    <nav class="flex justify-center border-b bg-white">
-        <button onclick="showTab('stash')" class="px-8 py-3 border-b-2 border-transparent hover:text-orange-600 transition" id="tab-stash">Stash</button>
-        <button onclick="showTab('patterns')" class="px-8 py-3 border-b-2 border-transparent hover:text-orange-600 transition" id="tab-patterns">Patterns</button>
-        <button onclick="showTab('projects')" class="px-8 py-3 border-b-2 border-orange-600 text-orange-600 font-bold" id="tab-projects">Projects</button>
-    </nav>
-
-    <main class="max-w-4xl mx-auto p-6">
-        
-        <section id="section-stash" class="hidden space-y-4">
-            <div class="flex justify-between items-center">
-                <h2 class="text-2xl font-semibold text-gray-700">My Stash</h2>
-                <button class="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm">+ Add Yarn</button>
-            </div>
-            <div id="stash-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
-                    <div>
-                        <h3 class="font-bold text-lg">Merino Wool</h3>
-                        <p class="text-sm text-gray-500">Brand: Softspun | Color: Deep Teal</p>
-                        <div class="mt-2 flex gap-4 text-sm font-medium">
-                            <span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded">4 Skeins</span>
-                            <span class="bg-green-50 text-green-700 px-2 py-0.5 rounded">$12.50 ea</span>
-                        </div>
-                    </div>
-                    <button class="text-red-400 hover:text-red-600 p-2 transition" title="Remove from Stash">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-        </section>
-
-        <section id="section-patterns" class="hidden space-y-4">
-            <div class="flex justify-between items-center">
-                <h2 class="text-2xl font-semibold text-gray-700">Patterns</h2>
-                <button class="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm">+ Add Pattern</button>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div onclick="openPatternModal('Summer Shawl')" class="cursor-pointer bg-white p-4 rounded-xl shadow-sm border hover:border-orange-300 transition">
-                    <div class="h-24 bg-gray-100 rounded-lg mb-2 flex items-center justify-center text-gray-400 italic">No Preview</div>
-                    <h3 class="font-bold">Summer Shawl</h3>
-                    <p class="text-xs text-orange-600 uppercase font-bold tracking-wider mb-2">Crochet</p>
-                    <div class="text-[10px] text-gray-400 line-clamp-2 border-t pt-2 italic">
-                        "Chain 4, join to form ring. Round 1: 3 dc into..."
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section id="section-projects" class="space-y-4">
-            <div class="flex justify-between items-center">
-                <h2 class="text-2xl font-semibold text-gray-700">My Projects</h2>
-                <button class="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm">New Project</button>
-            </div>
-            <div class="space-y-3">
-                <div onclick="openProjectWorkspace('Baby Blanket')" class="cursor-pointer bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex justify-between items-center hover:shadow-md transition">
-                    <div>
-                        <h3 class="text-xl font-bold">1. Baby Blanket</h3>
-                        <p class="text-sm text-gray-500">Crochet</p>
-                    </div>
-                    <span class="text-orange-400 font-bold">Open Workspace →</span>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <div id="pattern-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl">
-            <div class="flex justify-between border-b pb-4 mb-4">
-                <h2 id="modal-pattern-name" class="text-2xl font-bold">Pattern Name</h2>
-                <button onclick="closeModals()" class="text-gray-400 text-2xl hover:text-gray-600">&times;</button>
-            </div>
-            <div class="grid grid-cols-2 gap-4 text-sm mb-6">
-                <div><span class="text-gray-500 block text-xs uppercase font-bold">Craft</span> <strong id="modal-craft" class="text-orange-700">Crochet</strong></div>
-                <div><span class="text-gray-500 block text-xs uppercase font-bold">Yarn Recommended</span> <strong id="modal-yarn">Worsted Weight</strong></div>
-                <div><span class="text-gray-500 block text-xs uppercase font-bold">Hook/Needle</span> <strong id="modal-hook">5.0mm</strong></div>
-                <div><span class="text-gray-500 block text-xs uppercase font-bold">Gauge</span> <strong id="modal-gauge">14 sts x 8 rows</strong></div>
-            </div>
-            <div class="bg-orange-50 p-4 rounded-lg border border-dashed border-orange-200">
-                <h4 class="text-[10px] font-bold uppercase text-orange-400 mb-2 tracking-widest">Full Instructions / URL Source</h4>
-                <div id="modal-instructions" class="text-sm text-gray-700 leading-relaxed">
-                    Click to view: <a href="#" class="text-orange-600 underline">View Pattern File/Link</a>
-                </div>
+            <div class="support-menu">
+                <div style="font-size: 10px; color: #aaa; text-align: center; margin-bottom: 5px;">BUY ME A COFFEE?</div>
+                <a href="#">$5 Single Skein</a>
+                <a href="#">$10 Project Bag</a>
+                <a href="#">$25 Yarn Haul</a>
             </div>
         </div>
+        <button id="login-btn" onclick="handleAuthAction()" style="padding:8px 16px; background:white; border:1px solid var(--yarn); color:var(--yarn); border-radius:9999px; font-size:14px;">
+          <i class="fa-solid fa-user"></i> <span id="user-status">Login</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <nav>
+    <div style="display:flex; max-width:640px; margin:0 auto;">
+      <button onclick="switchTab(0)" class="nav-btn nav-active" id="nav-0">Stash</button>
+      <button onclick="switchTab(1)" class="nav-btn" id="nav-1">Patterns</button>
+      <button onclick="switchTab(2)" class="nav-btn" id="nav-2">Projects</button>
+    </div>
+  </nav>
+
+  <div style="max-width:640px; margin:0 auto; padding:16px;">
+    <div id="content-0">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h2 style="font-size:24px; font-weight:600;">My Stash</h2>
+        <div style="display:flex; gap:8px;">
+            <button onclick="checkAuthAnd(showAddStashModal)" class="btn-primary" style="padding: 10px 15px; font-size: 13px;">+ Yarn</button>
+            <button onclick="checkAuthAnd(showAddToolModal)" class="btn-primary" style="padding: 10px 15px; font-size: 13px; background: var(--accent);">+ Tools</button>
+        </div>
+      </div>
+      <div id="stash-grid"></div>
     </div>
 
-    <div id="project-workspace" class="hidden fixed inset-0 bg-orange-50 z-50 overflow-y-auto">
-        <div class="max-w-4xl mx-auto p-6">
-            <div class="flex justify-between items-center mb-8 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                <button onclick="closeModals()" class="text-orange-600 font-bold hover:underline">← Exit Workspace</button>
-                <button class="bg-gray-100 text-gray-500 px-4 py-1.5 rounded-lg text-xs font-bold hover:bg-red-50 hover:text-red-600 transition uppercase tracking-widest">
-                    📦 Archive Project
-                </button>
-            </div>
-
-            <h1 id="workspace-name" class="text-5xl font-black text-gray-800 mb-8 tracking-tighter">Project Title</h1>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div class="space-y-6">
-                    <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">Live Trackers</h3>
-                        <div class="flex justify-around items-center">
-                            <div class="text-center">
-                                <p class="text-[10px] text-gray-400 mb-2 font-bold uppercase">Rows</p>
-                                <div class="flex items-center gap-4">
-                                    <button class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center font-bold text-xl hover:bg-gray-100">-</button>
-                                    <span class="text-4xl font-black">12</span>
-                                    <button class="w-10 h-10 rounded-xl bg-orange-600 text-white flex items-center justify-center font-bold text-xl shadow-lg shadow-orange-200">+</button>
-                                </div>
-                            </div>
-                            <div class="w-px h-16 bg-gray-100"></div>
-                            <div class="text-center">
-                                <p class="text-[10px] text-gray-400 mb-2 font-bold uppercase">Stitches</p>
-                                <div class="flex items-center gap-4">
-                                    <button class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center font-bold text-xl hover:bg-gray-100">-</button>
-                                    <span class="text-4xl font-black">144</span>
-                                    <button class="w-10 h-10 rounded-xl bg-orange-600 text-white flex items-center justify-center font-bold text-xl shadow-lg shadow-orange-200">+</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 text-center">
-                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Project Timer</h3>
-                        <div class="text-5xl font-mono font-black text-gray-700 mb-6">01:24:05</div>
-                        <button class="bg-green-500 text-white px-8 py-3 rounded-2xl font-bold shadow-lg shadow-green-100 hover:scale-105 transition">Start Timer</button>
-                    </div>
-                </div>
-
-                <div class="bg-white p-8 rounded-3xl shadow-sm border border-orange-200">
-                    <div class="flex items-center gap-2 mb-6 text-orange-600">
-                        <span class="text-xl">💰</span>
-                        <h3 class="text-xs font-bold uppercase tracking-widest">Pricing Tool</h3>
-                    </div>
-                    <div class="space-y-5">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="text-[10px] font-bold text-gray-400 uppercase">Materials ($)</label>
-                                <input type="number" class="w-full bg-gray-50 border-none rounded-lg p-3 mt-1 outline-orange-400" placeholder="0.00">
-                            </div>
-                            <div>
-                                <label class="text-[10px] font-bold text-gray-400 uppercase">Hourly Rate ($)</label>
-                                <input type="number" class="w-full bg-gray-50 border-none rounded-lg p-3 mt-1 outline-orange-400" placeholder="15.00">
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="text-[10px] font-bold text-gray-400 uppercase">Total Hours</label>
-                                <input type="number" class="w-full bg-gray-50 border-none rounded-lg p-3 mt-1 outline-orange-400" placeholder="0.0">
-                            </div>
-                            <div>
-                                <label class="text-[10px] font-bold text-gray-400 uppercase">Extra Markup (%)</label>
-                                <input type="number" class="w-full bg-gray-50 border-none rounded-lg p-3 mt-1 outline-orange-400" placeholder="10">
-                            </div>
-                        </div>
-                        <div class="pt-6 border-t border-dashed mt-4">
-                            <div class="flex justify-between items-end">
-                                <div>
-                                    <p class="text-[10px] font-bold text-gray-400 uppercase">Recommended Price</p>
-                                    <p class="text-4xl font-black text-green-600">$45.00</p>
-                                </div>
-                                <button class="text-xs text-orange-600 font-bold hover:underline mb-2">Apply to Project</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div id="content-1" style="display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h2 style="font-size:24px; font-weight:600;">Patterns</h2>
+        <button onclick="checkAuthAnd(showPatternTypeChoice)" class="btn-primary">+ Add Pattern</button>
+      </div>
+      <div id="patterns-list"></div>
     </div>
 
-    <script>
-        function showTab(tabName) {
-            document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
-            document.getElementById('section-' + tabName).classList.remove('hidden');
-            document.querySelectorAll('nav button').forEach(b => {
-                b.classList.remove('border-orange-600', 'text-orange-600', 'font-bold');
-                b.classList.add('border-transparent');
-            });
-            document.getElementById('tab-' + tabName).classList.add('border-orange-600', 'text-orange-600', 'font-bold');
-        }
+    <div id="content-2" style="display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h2 style="font-size:24px; font-weight:600;">My Projects</h2>
+        <button onclick="checkAuthAnd(showNewProjectModal)" class="btn-primary">New Project</button>
+      </div>
+      <div id="projects-list"></div>
+    </div>
+  </div>
 
-        function openPatternModal(name) {
-            document.getElementById('modal-pattern-name').innerText = name;
-            document.getElementById('pattern-modal').classList.remove('hidden');
-        }
+  <div id="modal" class="modal">
+    <div id="modal-content" class="modal-content"></div>
+  </div>
 
-        function openProjectWorkspace(name) {
-            document.getElementById('workspace-name').innerText = name;
-            document.getElementById('project-workspace').classList.remove('hidden');
-        }
+  <script>
+    const SB_URL = 'https://oygyogdeahqgfbonnvhj.supabase.co';
+    const SB_KEY = 'sb_publishable_mx180Q9466CH5_UARdS2kw_NITjI5hK';
+    let supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+    
+    let currentUser = null;
+    let stash = [], patterns = [], projects = [];
+    let activeTimers = {};
 
-        function closeModals() {
-            document.getElementById('pattern-modal').classList.add('hidden');
-            document.getElementById('project-workspace').classList.add('hidden');
-        }
-    </script>
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+      currentUser = session?.user || null;
+      document.getElementById('user-status').textContent = currentUser ? currentUser.email.split('@')[0] : 'Login';
+      if (currentUser) loadAllData(); else clearData();
+    });
+
+    async function loadAllData() {
+      const [sRes, pRes, prRes] = await Promise.all([
+        supabaseClient.from('stash').select('*').order('created_at', { ascending: false }),
+        supabaseClient.from('patterns').select('*').order('created_at', { ascending: false }),
+        supabaseClient.from('projects').select('*').is('archived', false).order('created_at', { ascending: false })
+      ]);
+      stash = sRes.data || []; patterns = pRes.data || []; projects = prRes.data || [];
+      renderStash(); renderPatterns(); renderProjects();
+    }
+
+    function clearData() { stash = []; patterns = []; projects = []; renderStash(); renderPatterns(); renderProjects(); }
+
+    // --- NEW TOOLS FEATURE ---
+    function showAddToolModal() {
+        showModal(`
+            <h3>Add Hooks/Needles</h3>
+            <label>Tool Type</label><input id="s-name" placeholder="e.g. Ergonomic Hook">
+            <label>Size</label><input id="s-size" placeholder="e.g. 5.0mm / H">
+            <label>Quantity</label><input id="s-qty" type="number" value="1">
+            <button onclick="saveStashItem('tool')" class="btn-primary" style="width:100%;">Save to Stash</button>
+        `);
+    }
+
+    // --- UPDATED STASH LOGIC ---
+    function showAddStashModal() {
+      showModal(`
+        <h3>Add Yarn</h3>
+        <label>Brand/Name</label><input id="s-name" placeholder="e.g. Loops & Threads">
+        <label>Price per Skein ($)</label><input id="s-price" type="number" step="0.01" value="0.00">
+        <label>Quantity (Skeins)</label><input id="s-qty" type="number" value="1">
+        <button onclick="saveStashItem('yarn')" class="btn-primary" style="width:100%;">Save to Stash</button>
+      `);
+    }
+
+    async function saveStashItem(type) {
+      const item = { 
+        user_id: currentUser.id, 
+        name: document.getElementById('s-name').value + (type==='tool' ? ` (${document.getElementById('s-size').value})` : ''),
+        price: type === 'yarn' ? parseFloat(document.getElementById('s-price').value) : 0,
+        skeins: parseInt(document.getElementById('s-qty').value)
+      };
+      await supabaseClient.from('stash').insert([item]);
+      loadAllData(); closeModal();
+    }
+
+    async function updateStashQty(id, delta) {
+      const item = stash.find(s => s.id === id);
+      const newQty = Math.max(0, (item.skeins || 0) + delta);
+      await supabaseClient.from('stash').update({ skeins: newQty }).eq('id', id);
+      loadAllData();
+    }
+
+    async function removeFromStash(id) {
+      if(confirm("Remove this item?")) {
+        await supabaseClient.from('stash').delete().eq('id', id);
+        loadAllData();
+      }
+    }
+
+    function renderStash() {
+      document.getElementById('stash-grid').innerHTML = stash.map(item => `
+        <div class="card" style="cursor:default">
+          <div style="display:flex; justify-content:space-between; align-items:start;">
+            <div>
+              <strong>${item.name}</strong>
+              <div style="font-size:13px; color:var(--accent);">${item.price > 0 ? '$'+item.price.toFixed(2)+' / skein' : 'Tool'}</div>
+            </div>
+            <button onclick="removeFromStash('${item.id}')" style="color:#ccc; background:none;"><i class="fa-solid fa-trash"></i></button>
+          </div>
+          <div class="stash-controls">
+            <button class="counter-btn" onclick="updateStashQty('${item.id}', -1)">-</button>
+            <span style="font-weight:bold; min-width:80px; text-align:center;">${item.skeins || 0}</span>
+            <button class="counter-btn" onclick="updateStashQty('${item.id}', 1)">+</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // --- PATTERNS ---
+    function showPatternTypeChoice() {
+      showModal(`
+        <h3>New Pattern</h3>
+        <label>Pattern Name</label><input id="p-name" placeholder="Design Name">
+        <label>Craft</label><select id="p-craft"><option>Crochet</option><option>Knitting</option></select>
+        <label>Yarn Weight</label><input id="p-yarn" placeholder="e.g. Worsted">
+        <label>Recommended Hook/Needle</label><input id="p-hook" placeholder="e.g. 5.0mm">
+        <label>Gauge</label><input id="p-gauge" placeholder="e.g. 15 sts x 20 rows">
+        <label>Source (URL or Instructions)</label>
+        <textarea id="p-content" placeholder="Paste URL or type here..." rows="5"></textarea>
+        <button onclick="savePattern()" class="btn-primary" style="width:100%;">Save Pattern</button>
+      `);
+    }
+
+    async function savePattern() {
+      const content = document.getElementById('p-content').value;
+      const data = {
+        user_id: currentUser.id,
+        name: document.getElementById('p-name').value,
+        craft_type: document.getElementById('p-craft').value,
+        yarn_rec: document.getElementById('p-yarn').value,
+        hook_rec: document.getElementById('p-hook').value,
+        gauge: document.getElementById('p-gauge').value,
+      };
+      if (content.startsWith('http')) data.source_url = content; else data.formatted = content;
+      await supabaseClient.from('patterns').insert([data]);
+      loadAllData(); closeModal();
+    }
+
+    function openPatternDetail(id) {
+      const p = patterns.find(x => x.id === id);
+      let viewHtml = p.source_url 
+        ? `<div style="text-align:center; padding: 20px;"><a href="${p.source_url}" target="_blank" class="btn-primary">Open Original Pattern Link</a></div>`
+        : `<div style="white-space:pre-wrap; background:#f9f9f9; padding:15px; border-radius:12px;">${p.formatted || 'No instructions provided.'}</div>`;
+      
+      showModal(`
+        <h3>${p.name}</h3>
+        <div class="grid-2" style="font-size:13px; margin-bottom:15px;">
+          <div><strong>CRAFT:</strong> ${p.craft_type}</div>
+          <div><strong>YARN:</strong> ${p.yarn_rec}</div>
+          <div><strong>HOOK:</strong> ${p.hook_rec}</div>
+          <div><strong>GAUGE:</strong> ${p.gauge}</div>
+        </div>
+        ${viewHtml}
+      `);
+    }
+
+    function renderPatterns() {
+      document.getElementById('patterns-list').innerHTML = patterns.map(p => `
+        <div class="card" onclick="openPatternDetail('${p.id}')">
+          <strong>${p.name}</strong>
+          <div style="font-size:12px; color:var(--accent);">${p.craft_type} • ${p.yarn_rec || 'Any yarn'}</div>
+        </div>
+      `).join('');
+    }
+
+    // --- PROJECTS & PRICING FIX ---
+    function showNewProjectModal() {
+      showModal(`
+        <h3>New Project</h3>
+        <input id="pr-name" placeholder="What are you making?">
+        <select id="pr-craft"><option>Crochet</option><option>Knitting</option></select>
+        <button onclick="saveProject()" class="btn-primary" style="width:100%;">Start Crafting</button>
+      `);
+    }
+
+    async function saveProject() {
+      await supabaseClient.from('projects').insert([{ 
+        user_id: currentUser.id, name: document.getElementById('pr-name').value, 
+        craft_type: document.getElementById('pr-craft').value,
+        rows: 0, stitches: 0, total_hours: 0, material_cost: 0, hourly_rate: 15, markup: 10, archived: false 
+      }]);
+      loadAllData(); closeModal();
+    }
+
+    function openProjectWorkspace(id) {
+      const p = projects.find(x => x.id === id);
+      showModal(`
+        <h3>${p.name}</h3>
+        <div class="grid-2" style="text-align:center; margin-bottom:20px;">
+          <div style="background:#eee; padding:10px; border-radius:12px;">
+            <label>Rows</label>
+            <div style="font-size:20px; font-weight:bold;">${p.rows}</div>
+            <button onclick="updateProjectValue('${p.id}', 'rows', 1)" style="color:var(--yarn); background:none; font-weight:bold;">+ Add Row</button>
+          </div>
+          <div style="background:#eee; padding:10px; border-radius:12px;">
+            <label>Stitches</label>
+            <div style="font-size:20px; font-weight:bold;">${p.stitches}</div>
+            <button onclick="updateProjectValue('${p.id}', 'stitches', 1)" style="color:var(--yarn); background:none; font-weight:bold;">+ Add St</button>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid #eee; padding-top:15px;">
+          <label>Time Tracker</label>
+          <div class="timer-display" id="timer-${p.id}">${formatTime(p.total_hours || 0)}</div>
+          <button id="t-btn-${p.id}" onclick="toggleTimer('${p.id}')" class="btn-primary" style="width:100%; background:var(--accent);">
+            ${activeTimers[p.id] ? 'Stop Timer' : 'Start Timer'}
+          </button>
+        </div>
+
+        <div class="price-tool">
+          <label><i class="fa-solid fa-calculator"></i> Pricing Tool</label>
+          <div class="grid-2">
+            <div><label>Materials $</label><input type="number" id="mat-${p.id}" value="${p.material_cost}" oninput="liveUpdatePrice('${p.id}')"></div>
+            <div><label>Hourly Rate $</label><input type="number" id="rate-${p.id}" value="${p.hourly_rate}" oninput="liveUpdatePrice('${p.id}')"></div>
+          </div>
+          <label>Markup %</label><input type="number" id="mark-${p.id}" value="${p.markup}" oninput="liveUpdatePrice('${p.id}')">
+          <div style="display:flex; justify-content:space-between; font-weight:bold; border-top:1px solid #ddd; padding-top:10px;">
+            <span>TOTAL PRICE:</span>
+            <span id="total-${p.id}" style="color:var(--yarn)">$${calculatePrice(p)}</span>
+          </div>
+          <button onclick="saveProjectPricing('${p.id}')" style="width:100%; margin-top:10px; font-size:10px; color:var(--accent); background:none;">Update Prices Permanently</button>
+        </div>
+
+        <button onclick="archiveProject('${p.id}')" class="delete-btn"><i class="fa-solid fa-box-archive"></i> Archive Project</button>
+      `);
+    }
+
+    function calculatePrice(p) {
+      const labor = (p.hourly_rate || 0) * (p.total_hours || 0);
+      const subtotal = (parseFloat(p.material_cost) || 0) + labor;
+      const total = subtotal * (1 + (p.markup || 0) / 100);
+      return total.toFixed(2);
+    }
+
+    function liveUpdatePrice(id) {
+        const p = projects.find(x => x.id === id);
+        const mat = parseFloat(document.getElementById(`mat-${id}`).value) || 0;
+        const rate = parseFloat(document.getElementById(`rate-${id}`).value) || 0;
+        const mark = parseFloat(document.getElementById(`mark-${id}`).value) || 0;
+        const labor = rate * (p.total_hours || 0);
+        const total = (mat + labor) * (1 + mark / 100);
+        document.getElementById(`total-${id}`).innerText = '$' + total.toFixed(2);
+    }
+
+    async function saveProjectPricing(id) {
+        const updates = {
+            material_cost: parseFloat(document.getElementById(`mat-${id}`).value),
+            hourly_rate: parseFloat(document.getElementById(`rate-${id}`).value),
+            markup: parseFloat(document.getElementById!(`mark-${id}`).value)
+        };
+        await supabaseClient.from('projects').update(updates).eq('id', id);
+        loadAllData();
+        alert("Pricing Updated!");
+    }
+
+    async function updateProjectValue(id, field, delta) {
+      const p = projects.find(x => x.id === id);
+      const updates = {}; updates[field] = (p[field] || 0) + delta;
+      await supabaseClient.from('projects').update(updates).eq('id', id);
+      loadAllData(); setTimeout(() => openProjectWorkspace(id), 200);
+    }
+
+    function toggleTimer(id) {
+      if (activeTimers[id]) {
+        const elapsedHours = (Date.now() - activeTimers[id].start) / 3600000;
+        clearInterval(activeTimers[id].interval);
+        const p = projects.find(x => x.id === id);
+        const newTotal = (p.total_hours || 0) + elapsedHours;
+        supabaseClient.from('projects').update({ total_hours: newTotal }).eq('id', id).then(() => {
+            loadAllData();
+            delete activeTimers[id];
+            openProjectWorkspace(id);
+        });
+      } else {
+        activeTimers[id] = { start: Date.now(), interval: setInterval(() => {
+          const diff = Math.floor((Date.now() - activeTimers[id].start) / 1000);
+          document.getElementById(`timer-${id}`).innerText = new Date(diff * 1000).toISOString().substr(11, 8);
+        }, 1000) };
+        document.getElementById(`t-btn-${id}`).innerText = "Stop & Save Time";
+      }
+    }
+
+    function formatTime(hours) {
+      const totalSeconds = Math.floor(hours * 3600);
+      return new Date(totalSeconds * 1000).toISOString().substr(11, 8);
+    }
+
+    // --- UI HELPERS ---
+    function switchTab(n) {
+      [0,1,2].forEach(i => {
+        document.getElementById(`content-${i}`).style.display = i === n ? 'block' : 'none';
+        document.getElementById(`nav-${i}`).classList.toggle('nav-active', i === n);
+      });
+    }
+
+    function showModal(html) {
+      document.getElementById('modal-content').innerHTML = html + '<button onclick="closeModal()" style="width:100%; margin-top:12px; background:#eee; padding:12px; border-radius:9999px;">Close</button>';
+      document.getElementById('modal').style.display = 'flex';
+    }
+
+    function closeModal() { document.getElementById('modal').style.display = 'none'; }
+    function checkAuthAnd(cb) { if (!currentUser) showLoginModal(); else cb(); }
+    function handleAuthAction() { if (currentUser) { if (confirm("Logout?")) supabaseClient.auth.signOut(); } else showLoginModal(); }
+    function showLoginModal() { showModal(`<h3>Join</h3><input id="email" placeholder="Email"><input id="pass" type="password" placeholder="Pass"><button onclick="processAuth()" class="btn-primary" style="width:100%">Go</button>`); }
+    async function processAuth() {
+      const email = document.getElementById('email').value, password = document.getElementById('pass').value;
+      let { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) await supabaseClient.auth.signUp({ email, password });
+      closeModal();
+    }
+
+    async function archiveProject(id) {
+      if(confirm("Archive this project?")) {
+        await supabaseClient.from('projects').update({ archived: true }).eq('id', id);
+        loadAllData(); closeModal();
+      }
+    }
+
+    function renderProjects() {
+      document.getElementById('projects-list').innerHTML = projects.map(p => `
+        <div class="card" onclick="openProjectWorkspace('${p.id}')">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <strong>${p.name}</strong>
+            <span style="font-size:12px; background:#f0f0f0; padding:4px 8px; border-radius:8px;">${p.craft_type}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    window.onload = () => { if(!currentUser) loadAllData(); };
+  </script>
 </body>
 </html>
