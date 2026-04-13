@@ -103,17 +103,13 @@
     });
 
     async function loadAllData() {
-      try {
-        const [sRes, pRes, prRes] = await Promise.all([
-          supabaseClient.from('stash').select('*').order('created_at', { ascending: false }),
-          supabaseClient.from('patterns').select('*').order('created_at', { ascending: false }),
-          supabaseClient.from('projects').select('*').order('created_at', { ascending: false })
-        ]);
-        stash = sRes.data || []; 
-        patterns = pRes.data || []; 
-        projects = prRes.data || [];
-        renderStash(); renderPatterns(); renderProjects();
-      } catch (e) { console.error("Error loading data:", e); }
+      const [sRes, pRes, prRes] = await Promise.all([
+        supabaseClient.from('stash').select('*').order('created_at', { ascending: false }),
+        supabaseClient.from('patterns').select('*').order('created_at', { ascending: false }),
+        supabaseClient.from('projects').select('*').is('archived', false).order('created_at', { ascending: false })
+      ]);
+      stash = sRes.data || []; patterns = pRes.data || []; projects = prRes.data || [];
+      renderStash(); renderPatterns(); renderProjects();
     }
 
     function clearData() { stash = []; patterns = []; projects = []; renderStash(); renderPatterns(); renderProjects(); }
@@ -133,8 +129,8 @@
       const item = { 
         user_id: currentUser.id, 
         name: document.getElementById('s-name').value,
-        price: parseFloat(document.getElementById('s-price').value) || 0,
-        skeins: parseInt(document.getElementById('s-qty').value) || 0
+        price: parseFloat(document.getElementById('s-price').value),
+        skeins: parseInt(document.getElementById('s-qty').value)
       };
       await supabaseClient.from('stash').insert([item]);
       loadAllData(); closeModal();
@@ -159,10 +155,10 @@
         <div class="card" style="cursor:default">
           <div style="display:flex; justify-content:space-between; align-items:start;">
             <div>
-              <strong>${item.name || 'Unnamed Yarn'}</strong>
+              <strong>${item.name}</strong>
               <div style="font-size:13px; color:var(--accent);">$${(item.price || 0).toFixed(2)} / skein</div>
             </div>
-            <button onclick="removeFromStash('${item.id}')" style="color:#ccc; background:none;"><i class="fa-solid fa-trash"></i></button>
+            <button onclick="removeFromStash('${item.id}')" style="color:#ccc;"><i class="fa-solid fa-trash"></i></button>
           </div>
           <div class="stash-controls">
             <button class="counter-btn" onclick="updateStashQty('${item.id}', -1)">-</button>
@@ -212,12 +208,12 @@
       showModal(`
         <h3>${p.name}</h3>
         <div class="grid-2" style="font-size:13px; margin-bottom:15px;">
-          <div><strong>CRAFT:</strong> ${p.craft_type || 'N/A'}</div>
-          <div><strong>YARN:</strong> ${p.yarn_rec || 'Any'}</div>
-          <div><strong>HOOK:</strong> ${p.hook_rec || 'Any'}</div>
-          <div><strong>GAUGE:</strong> ${p.gauge || 'Any'}</div>
+          <div><strong>CRAFT:</strong> ${p.craft_type}</div>
+          <div><strong>YARN:</strong> ${p.yarn_rec}</div>
+          <div><strong>HOOK:</strong> ${p.hook_rec}</div>
+          <div><strong>GAUGE:</strong> ${p.gauge}</div>
         </div>
-        <label>Instructions</label>
+        <label>Pattern Instructions</label>
         ${viewHtml}
       `);
     }
@@ -225,8 +221,8 @@
     function renderPatterns() {
       document.getElementById('patterns-list').innerHTML = patterns.map(p => `
         <div class="card" onclick="openPatternDetail('${p.id}')">
-          <strong>${p.name || 'Unnamed Pattern'}</strong>
-          <div style="font-size:12px; color:var(--accent);">${p.craft_type || ''} • ${p.yarn_rec || 'Any yarn'}</div>
+          <strong>${p.name}</strong>
+          <div style="font-size:12px; color:var(--accent);">${p.craft_type} • ${p.yarn_rec || 'Any yarn'}</div>
         </div>
       `).join('');
     }
@@ -260,13 +256,13 @@
         <div class="grid-2" style="text-align:center; margin-bottom:20px;">
           <div style="background:#eee; padding:10px; border-radius:12px;">
             <label>Rows</label>
-            <div style="font-size:20px; font-weight:bold;">${p.rows || 0}</div>
-            <button onclick="updateProjectValue('${p.id}', 'rows', 1)" style="font-size:12px; background:white; padding:4px 8px; border-radius:4px; margin-top:5px;">+ Row</button>
+            <div style="font-size:20px; font-weight:bold;">${p.rows}</div>
+            <button onclick="updateProjectValue('${p.id}', 'rows', 1)">+ Row</button>
           </div>
           <div style="background:#eee; padding:10px; border-radius:12px;">
             <label>Stitches</label>
-            <div style="font-size:20px; font-weight:bold;">${p.stitches || 0}</div>
-            <button onclick="updateProjectValue('${p.id}', 'stitches', 1)" style="font-size:12px; background:white; padding:4px 8px; border-radius:4px; margin-top:5px;">+ St</button>
+            <div style="font-size:20px; font-weight:bold;">${p.stitches}</div>
+            <button onclick="updateProjectValue('${p.id}', 'stitches', 1)">+ St</button>
           </div>
         </div>
 
@@ -286,7 +282,7 @@
           </div>
           <label>Markup %</label><input type="number" value="${p.markup || 0}" onchange="updateProjectField('${p.id}', 'markup', this.value)">
           <div style="display:flex; justify-content:space-between; font-weight:bold; border-top:1px solid #ddd; pt:10px;">
-            <span>EST. PRICE:</span>
+            <span>TOTAL PRICE:</span>
             <span style="color:var(--yarn)">$${calculatePrice(p)}</span>
           </div>
         </div>
@@ -306,18 +302,17 @@
       const p = projects.find(x => x.id === id);
       const updates = {}; updates[field] = (p[field] || 0) + delta;
       await supabaseClient.from('projects').update(updates).eq('id', id);
-      loadAllData(); 
-      setTimeout(() => openProjectWorkspace(id), 150); // Refresh modal
+      loadAllData(); setTimeout(() => openProjectWorkspace(id), 100);
     }
 
     async function updateProjectField(id, field, val) {
-      const updates = {}; updates[field] = parseFloat(val) || 0;
+      const updates = {}; updates[field] = parseFloat(val);
       await supabaseClient.from('projects').update(updates).eq('id', id);
       loadAllData();
     }
 
     async function archiveProject(id) {
-      if(confirm("Archive this project?")) {
+      if(confirm("Archive this project? It will be removed from your active list.")) {
         await supabaseClient.from('projects').update({ archived: true }).eq('id', id);
         loadAllData(); closeModal();
       }
@@ -334,26 +329,23 @@
       } else {
         activeTimers[id] = { start: Date.now(), interval: setInterval(() => {
           const diff = Math.floor((Date.now() - activeTimers[id].start) / 1000);
-          const display = document.getElementById(`timer-${id}`);
-          if (display) display.innerText = new Date(diff * 1000).toISOString().substr(11, 8);
+          document.getElementById(`timer-${id}`).innerText = new Date(diff * 1000).toISOString().substr(11, 8);
         }, 1000) };
         document.getElementById(`t-btn-${id}`).innerText = "Stop Timer";
       }
     }
 
     function formatTime(hours) {
-      const totalSeconds = Math.floor((hours || 0) * 3600);
+      const totalSeconds = Math.floor(hours * 3600);
       return new Date(totalSeconds * 1000).toISOString().substr(11, 8);
     }
 
     function renderProjects() {
-      // Filter out archived projects
-      const activeProjects = projects.filter(p => !p.archived);
-      document.getElementById('projects-list').innerHTML = activeProjects.map(p => `
+      document.getElementById('projects-list').innerHTML = projects.map(p => `
         <div class="card" onclick="openProjectWorkspace('${p.id}')">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <strong>${p.name || 'Unnamed Project'}</strong>
-            <span style="font-size:12px; background:#f0f0f0; padding:4px 8px; border-radius:8px;">${p.craft_type || ''}</span>
+            <strong>${p.name}</strong>
+            <span style="font-size:12px; background:#f0f0f0; padding:4px 8px; border-radius:8px;">${p.craft_type}</span>
           </div>
         </div>
       `).join('');
@@ -383,7 +375,7 @@
       closeModal();
     }
 
-    window.onload = () => { if(currentUser) loadAllData(); };
+    window.onload = () => { if(!currentUser) loadAllData(); };
   </script>
 </body>
 </html>
