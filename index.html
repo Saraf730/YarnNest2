@@ -10,9 +10,9 @@
     body { margin:0; font-family:system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; touch-action:manipulation; }
     header { background:white; padding:16px; box-shadow:0 2px 4px rgba(0,0,0,0.1); position:sticky; top:0; z-index:50; }
     nav { background:white; border-bottom:1px solid #ddd; position:sticky; top:73px; z-index:40; }
-    .nav-btn { padding:16px 8px; font-size:15px; flex:1; text-align:center; border-bottom:3px solid transparent; }
+    .nav-btn { padding:16px 8px; font-size:15px; flex:1; text-align:center; border-bottom:3px solid transparent; background:none; border-top:none; border-left:none; border-right:none; cursor:pointer; }
     .nav-active { border-bottom-color:var(--yarn); color:var(--yarn); font-weight:600; }
-    button { touch-action: manipulation; transition: transform 0.1s; }
+    button { touch-action: manipulation; transition: transform 0.1s; cursor:pointer; border:none; }
     button:active { transform: scale(0.95); }
     .btn-primary { background:var(--yarn); color:white; padding:14px 20px; border-radius:9999px; font-weight:500; }
     .card { background:white; border-radius:24px; padding:20px; margin-bottom:16px; box-shadow:0 2px 8px rgba(0,0,0,0.08); }
@@ -22,6 +22,8 @@
     .price-breakdown { background:#f8f1e9; padding:16px; border-radius:16px; margin:16px 0; }
     .donate-option { background:#f8f1e9; padding:16px; border-radius:16px; margin-bottom:12px; text-align:center; font-weight:600; cursor:pointer; }
     #login-btn.loading { opacity:0.6; pointer-events:none; cursor:wait; }
+    input, select, textarea { width:100%; padding:12px; border:1px solid #ddd; border-radius:12px; margin-bottom:12px; font-family: inherit; box-sizing: border-box; }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
@@ -39,7 +41,7 @@
         <button onclick="showDonateModal()" style="padding:8px 16px; background:white; border:1px solid var(--yarn); color:var(--yarn); border-radius:9999px; font-size:14px;">
           <i class="fa-solid fa-heart"></i> Donate
         </button>
-        <button id="login-btn" onclick="showLoginModal()" style="padding:8px 16px; background:white; border:1px solid var(--yarn); color:var(--yarn); border-radius:9999px; font-size:14px;">
+        <button id="login-btn" onclick="showLoginModal()" class="loading" style="padding:8px 16px; background:white; border:1px solid var(--yarn); color:var(--yarn); border-radius:9999px; font-size:14px;">
           <i class="fa-solid fa-user"></i> <span id="user-status">Login</span>
         </button>
       </div>
@@ -55,7 +57,6 @@
   </nav>
 
   <div style="max-width:640px; margin:0 auto; padding:16px;">
-    <!-- Stash Tab -->
     <div id="content-0">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
         <h2 style="font-size:24px; font-weight:600;">My Stash</h2>
@@ -64,7 +65,6 @@
       <div id="stash-grid"></div>
     </div>
 
-    <!-- Patterns Tab -->
     <div id="content-1" style="display:none;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
         <h2 style="font-size:24px; font-weight:600;">Patterns</h2>
@@ -73,7 +73,6 @@
       <div id="patterns-list"></div>
     </div>
 
-    <!-- Projects Tab -->
     <div id="content-2" style="display:none;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
         <h2 style="font-size:24px; font-weight:600;">My Projects</h2>
@@ -83,7 +82,6 @@
     </div>
   </div>
 
-  <!-- Modal -->
   <div id="modal" class="modal">
     <div id="modal-content" class="modal-content"></div>
   </div>
@@ -91,37 +89,68 @@
   <script>
     let supabaseClient = null;
     let currentUser = null;
-    let stash = [];
-    let patterns = [];
-    let projects = [];
-    let timers = {};
     let supabaseReady = false;
 
-    // Initialize immediately
-    loadSupabase();
+    // Load Data from LocalStorage initially
+    let stash = JSON.parse(localStorage.getItem('yn_stash')) || [];
+    let patterns = JSON.parse(localStorage.getItem('yn_patterns')) || [];
+    let projects = JSON.parse(localStorage.getItem('yn_projects')) || [];
+    let timers = {};
+
+    window.onload = () => {
+      switchTab(0);
+      renderAll();
+      loadSupabase();
+    };
 
     function loadSupabase() {
-      if (supabaseClient) return;
       const script = document.createElement('script');
       script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
       script.onload = () => {
         const url = 'https://oygyogdeahqgfbonnvhj.supabase.co';
         const key = 'sb_publishable_mx180Q9466CH5_UARdS2kw_NITjI5hK';
-        
-        // Fixed: Use 'supabase' lowercase and ensure client is created correctly
         try {
+            // Correct initialization
             supabaseClient = supabase.createClient(url, key);
             supabaseReady = true;
-            const loginBtn = document.getElementById('login-btn');
-            if (loginBtn) loginBtn.classList.remove('loading');
-            console.log('%c✅ Supabase is ready!', 'color:#e07a5f');
-        } catch (e) {
-            console.error("Supabase Init Error:", e);
-        }
+            document.getElementById('login-btn').classList.remove('loading');
+            checkUser();
+        } catch (e) { console.error("Supabase Init Error:", e); }
       };
       document.head.appendChild(script);
     }
 
+    async function checkUser() {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session) {
+            currentUser = session.user;
+            document.getElementById('user-status').textContent = currentUser.email.split('@')[0];
+            fetchUserData();
+        }
+    }
+
+    async function fetchUserData() {
+        if (!currentUser) return;
+        // Logic to pull from Supabase tables would go here
+        // For now, we continue using state + localStorage
+    }
+
+    function saveData() {
+        localStorage.setItem('yn_stash', JSON.stringify(stash));
+        localStorage.setItem('yn_patterns', JSON.stringify(patterns));
+        localStorage.setItem('yn_projects', JSON.stringify(projects));
+        
+        // If logged in, you could also sync to Supabase here:
+        // if(currentUser) { supabaseClient.from('stash').upsert(stash)... }
+    }
+
+    function renderAll() {
+        renderStash();
+        renderPatterns();
+        renderProjects();
+    }
+
+    // --- NAVIGATION & UI ---
     function switchTab(n) {
       document.getElementById('content-0').style.display = (n === 0) ? 'block' : 'none';
       document.getElementById('content-1').style.display = (n === 1) ? 'block' : 'none';
@@ -134,87 +163,216 @@
       document.getElementById('modal').style.display = 'flex';
     }
 
-    function closeModal() {
-      document.getElementById('modal').style.display = 'none';
-    }
+    function closeModal() { document.getElementById('modal').style.display = 'none'; }
 
+    // --- AUTHENTICATION ---
     function showLoginModal() {
       if (currentUser) {
-        if (confirm("Logout?")) currentUser = null;
-        document.getElementById('user-status').textContent = 'Login';
+        if (confirm("Logout?")) {
+            supabaseClient.auth.signOut();
+            currentUser = null;
+            document.getElementById('user-status').textContent = 'Login';
+        }
         return;
       }
       const html = `
-        <h3 style="font-size:20px; font-weight:600; margin-bottom:20px;">Sign in or create account</h3>
-        <input id="email" placeholder="Email" type="email" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:12px; margin-bottom:12px;">
-        <input id="password" placeholder="Password" type="password" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:12px; margin-bottom:20px;">
+        <h3 style="margin-bottom:20px;">Sign In</h3>
+        <input id="email" placeholder="Email" type="email">
+        <input id="password" placeholder="Password" type="password">
         <button onclick="handleAuth()" class="btn-primary" style="width:100%;">Login / Sign Up</button>
-        <button onclick="closeModal()" style="width:100%; margin-top:12px; padding:14px; background:none; border:1px solid #ddd; border-radius:9999px;">Cancel</button>
+        <button onclick="closeModal()" style="width:100%; margin-top:12px; background:none; border:1px solid #ddd; border-radius:9999px;">Cancel</button>
       `;
       showModal(html);
     }
 
     async function handleAuth() {
-      if (!supabaseReady || !supabaseClient) {
-          alert("Supabase is still loading. Please wait a moment...");
-          return;
-      }
-
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
       if (!email || !password) return alert("Email and password required");
 
-      // Attempt Sign In
       let { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-      
-      // If sign in fails, try Sign Up
-      if (error) {
-          console.log("Login failed, attempting signup...");
-          ({ data, error } = await supabaseClient.auth.signUp({ email, password }));
-      }
+      if (error) ({ data, error } = await supabaseClient.auth.signUp({ email, password }));
       
       if (error) return alert(error.message);
 
       currentUser = data.user || data.session?.user;
-      if (currentUser) {
-          document.getElementById('user-status').textContent = currentUser.email.split('@')[0];
-          closeModal();
-          alert(`✅ Logged in as ${currentUser.email}`);
-      }
+      document.getElementById('user-status').textContent = currentUser.email.split('@')[0];
+      closeModal();
+      alert(`✅ Logged in!`);
     }
 
-    function showDonateModal() {
+    // --- STASH FEATURES ---
+    function showAddStashModal() {
       const html = `
-        <h3 style="font-size:20px; font-weight:600; margin-bottom:20px; text-align:center;">Support YarnNest</h3>
-        <p style="text-align:center; color:var(--accent); margin-bottom:20px;">Help keep the site running ad-free ❤️</p>
-        <div onclick="selectDonation(3)" class="donate-option">☕ $3 — Buy me a coffee</div>
-        <div onclick="selectDonation(5)" class="donate-option">🧶 $5 — Support a skein of yarn</div>
-        <div onclick="selectDonation(10)" class="donate-option">🧵 $10 — Help with hosting</div>
-        <div style="margin:20px 0; text-align:center;">
-          <label>Or enter custom amount ($)</label>
-          <input id="custom-donation" type="number" step="0.01" placeholder="5.00" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:12px; text-align:center; font-size:18px;">
+        <h3 style="margin-bottom:20px;">Add to Stash</h3>
+        <select id="item-type">
+          <option value="yarn">Yarn</option>
+          <option value="hook">Crochet Hook</option>
+          <option value="needle">Knitting Needle</option>
+        </select>
+        <input id="brand" placeholder="Brand">
+        <div id="yarn-fields">
+          <input id="color" placeholder="Color">
+          <input id="weight" placeholder="Weight (e.g. Worsted)">
+          <input id="skeins" type="number" placeholder="Quantity">
+          <input id="cost" type="number" step="0.01" placeholder="Cost per skein ($)">
         </div>
-        <button onclick="processDonation()" class="btn-primary" style="width:100%; margin-bottom:12px;">Donate Now</button>
-        <button onclick="closeModal()" style="width:100%; padding:14px; background:none; border:1px solid #ddd; border-radius:9999px;">Maybe later</button>
+        <div id="tool-fields" style="display:none;">
+          <input id="size" placeholder="Size (e.g. 5.5mm)">
+          <input id="tool-color" placeholder="Color (optional)">
+        </div>
+        <button onclick="addStashItem()" class="btn-primary" style="width:100%; margin-top:20px;">Add to Stash</button>
+        <button onclick="closeModal()" style="width:100%; margin-top:8px; background:none; border:1px solid #ddd; border-radius:9999px; padding: 14px;">Cancel</button>
+      `;
+      showModal(html);
+      document.getElementById('item-type').onchange = function() {
+        const isYarn = this.value === 'yarn';
+        document.getElementById('yarn-fields').style.display = isYarn ? 'block' : 'none';
+        document.getElementById('tool-fields').style.display = isYarn ? 'none' : 'block';
+      };
+    }
+
+    function addStashItem() {
+      const type = document.getElementById('item-type').value;
+      const brand = document.getElementById('brand').value.trim() || "Unknown";
+      let item = { type, brand, id: Date.now() };
+      
+      if (type === 'yarn') {
+        item.color = document.getElementById('color').value.trim() || "N/A";
+        item.weight = document.getElementById('weight').value.trim() || "N/A";
+        item.skeins = parseInt(document.getElementById('skeins').value) || 1;
+        item.cost = parseFloat(document.getElementById('cost').value) || 0;
+        item.name = `${brand} - ${item.color} ${item.weight} (${item.skeins} skeins)`;
+      } else {
+        item.size = document.getElementById('size').value.trim() || "N/A";
+        item.color = document.getElementById('tool-color').value.trim() || "";
+        item.name = `${brand} ${type} - Size ${item.size}`;
+      }
+      
+      stash.push(item);
+      saveData();
+      renderStash();
+      closeModal();
+    }
+
+    function renderStash() {
+      const grid = document.getElementById('stash-grid');
+      grid.innerHTML = stash.length === 0 ? '<p style="padding:40px; color:var(--accent); text-align:center;">Your stash is empty.</p>' : '';
+      stash.forEach((item, i) => {
+        grid.innerHTML += `
+          <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <div style="font-weight:600;">${item.name}</div>
+                ${item.type === 'yarn' ? `<div style="font-size:13px; color:var(--accent);">$${item.cost} each</div>` : ''}
+              </div>
+              <span style="font-size:28px;">${item.type==='yarn' ? '🧶' : '🪝'}</span>
+            </div>
+            <button onclick="removeFromStash(${i})" style="margin-top:12px; color:#ef4444; background:none; font-size:13px;">Remove</button>
+          </div>`;
+      });
+    }
+
+    function removeFromStash(i) {
+        if(confirm("Remove?")) { stash.splice(i, 1); saveData(); renderStash(); }
+    }
+
+    // --- PATTERN FEATURES ---
+    function showPatternTypeChoice() {
+      const html = `
+        <h3 style="margin-bottom:24px; text-align:center;">Add Pattern</h3>
+        <button onclick="showManualPatternForm()" class="btn-primary" style="width:100%; margin-bottom:12px;">Manual Entry</button>
+        <button onclick="showSourcePatternForm()" class="btn-primary" style="width:100%; background:#8c6f5e;">Link Source (URL)</button>
+        <button onclick="closeModal()" style="width:100%; margin-top:12px; background:none; border:1px solid #ddd; border-radius:9999px; padding:14px;">Cancel</button>
       `;
       showModal(html);
     }
 
-    function selectDonation(amount) {
-        const input = document.getElementById('custom-donation');
-        if(input) input.value = amount;
+    function showManualPatternForm() {
+      const html = `
+        <h3>Manual Pattern</h3>
+        <input id="pat-name" placeholder="Pattern Name">
+        <select id="craft-type"><option>Crochet</option><option>Knitting</option></select>
+        <textarea id="pat-instructions" placeholder="Instructions..." rows="5"></textarea>
+        <button onclick="savePattern('manual')" class="btn-primary" style="width:100%;">Save</button>
+      `;
+      showModal(html);
     }
-    
-    function processDonation() {
-        alert("Thank you for your support! (Donation logic not implemented)");
+
+    function showSourcePatternForm() {
+      const html = `
+        <h3>Link Pattern</h3>
+        <input id="pat-name" placeholder="Pattern Name">
+        <input id="pat-url" placeholder="URL (optional)">
+        <button onclick="savePattern('source')" class="btn-primary" style="width:100%;">Save</button>
+      `;
+      showModal(html);
+    }
+
+    function savePattern(type) {
+        const name = document.getElementById('pat-name').value || "Untitled";
+        const newPat = { id: Date.now(), name, type: type === 'manual' ? 'Manual' : 'Link' };
+        if(type === 'manual') newPat.formatted = document.getElementById('pat-instructions').value;
+        else newPat.url = document.getElementById('pat-url').value;
+        
+        patterns.push(newPat);
+        saveData();
+        renderPatterns();
         closeModal();
     }
 
-    // Placeholder functions for UI buttons
-    function showAddStashModal() { alert("Add Item clicked"); }
-    function showPatternTypeChoice() { alert("Add Pattern clicked"); }
-    function showNewProjectChoice() { alert("New Project clicked"); }
+    function renderPatterns() {
+      const container = document.getElementById('patterns-list');
+      container.innerHTML = patterns.length === 0 ? '<p style="text-align:center; color:var(--accent);">No patterns saved.</p>' : '';
+      patterns.forEach(p => {
+        container.innerHTML += `<div class="card" onclick="alert('${p.name}')"><strong>${p.name}</strong></div>`;
+      });
+    }
 
+    // --- PROJECT FEATURES ---
+    function showNewProjectChoice() {
+      const html = `
+        <h3>New Project</h3>
+        <input id="project-name" placeholder="Project Name">
+        <select id="project-craft"><option>Crochet</option><option>Knitting</option></select>
+        <button onclick="createProject()" class="btn-primary" style="width:100%;">Create Project</button>
+      `;
+      showModal(html);
+    }
+
+    function createProject() {
+        const name = document.getElementById('project-name').value || "New Project";
+        projects.push({ id: Date.now(), name, rows: 0, stitches: 0, seconds: 0 });
+        saveData();
+        renderProjects();
+        closeModal();
+    }
+
+    function renderProjects() {
+      const container = document.getElementById('projects-list');
+      container.innerHTML = projects.length === 0 ? '<p style="text-align:center; color:var(--accent);">Start a new project!</p>' : '';
+      projects.forEach((proj, i) => {
+        container.innerHTML += `
+          <div class="card">
+            <div style="font-weight:600; font-size:18px;">${proj.name}</div>
+            <div style="display:flex; gap:20px; margin-top:10px;">
+                <span>Rows: ${proj.rows}</span>
+                <span>Stitches: ${proj.stitches}</span>
+            </div>
+            <button onclick="changeRows(${i}, 1)" style="margin-top:10px; background:#f2d9c0; padding:5px 10px; border-radius:5px;">+ Row</button>
+          </div>`;
+      });
+    }
+
+    function changeRows(idx, delta) {
+        projects[idx].rows += delta;
+        saveData();
+        renderProjects();
+    }
+
+    function showDonateModal() {
+        alert("Thank you for wanting to support YarnNest! ❤️");
+    }
   </script>
 </body>
 </html>
