@@ -111,20 +111,29 @@
     <div id="modal-content" class="modal-content"></div>
   </div>
 
-  <script>
+<script>
     const SB_URL = 'https://oygyogdeahqgfbonnvhj.supabase.co';
     const SB_KEY = 'sb_publishable_mx180Q9466CH5_UARdS2kw_NITjI5hK';
-    let supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+    
+    // Safety check for Supabase library
+    let supabaseClient;
+    if (typeof supabase === 'undefined') {
+        console.error("Supabase library failed to load from CDN.");
+    } else {
+        supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+    }
     
     let currentUser = null;
     let stash = [], patterns = [], projects = [];
     let activeTimers = {};
 
-    supabaseClient.auth.onAuthStateChange((event, session) => {
-      currentUser = session?.user || null;
-      document.getElementById('user-status').textContent = currentUser ? currentUser.email.split('@')[0] : 'Login';
-      if (currentUser) loadAllData(); else clearData();
-    });
+    if (supabaseClient) {
+        supabaseClient.auth.onAuthStateChange((event, session) => {
+          currentUser = session?.user || null;
+          document.getElementById('user-status').textContent = currentUser ? currentUser.email.split('@')[0] : 'Login';
+          if (currentUser) loadAllData(); else clearData();
+        });
+    }
 
     async function loadAllData() {
       const [sRes, pRes, prRes] = await Promise.all([
@@ -138,7 +147,6 @@
 
     function clearData() { stash = []; patterns = []; projects = []; renderStash(); renderPatterns(); renderProjects(); }
 
-    // --- NEW TOOLS FEATURE ---
     function showAddToolModal() {
         showModal(`
             <h3>Add Hooks/Needles</h3>
@@ -149,7 +157,6 @@
         `);
     }
 
-    // --- UPDATED STASH LOGIC ---
     function showAddStashModal() {
       showModal(`
         <h3>Add Yarn</h3>
@@ -204,7 +211,6 @@
       `).join('');
     }
 
-    // --- PATTERNS ---
     function showPatternTypeChoice() {
       showModal(`
         <h3>New Pattern</h3>
@@ -261,7 +267,6 @@
       `).join('');
     }
 
-    // --- PROJECTS & PRICING FIX ---
     function showNewProjectModal() {
       showModal(`
         <h3>New Project</h3>
@@ -344,7 +349,7 @@
         const updates = {
             material_cost: parseFloat(document.getElementById(`mat-${id}`).value),
             hourly_rate: parseFloat(document.getElementById(`rate-${id}`).value),
-            markup: parseFloat(document.getElementById!(`mark-${id}`).value)
+            markup: parseFloat(document.getElementById(`mark-${id}`).value)
         };
         await supabaseClient.from('projects').update(updates).eq('id', id);
         loadAllData();
@@ -383,7 +388,6 @@
       return new Date(totalSeconds * 1000).toISOString().substr(11, 8);
     }
 
-    // --- UI HELPERS ---
     function switchTab(n) {
       [0,1,2].forEach(i => {
         document.getElementById(`content-${i}`).style.display = i === n ? 'block' : 'none';
@@ -399,7 +403,11 @@
     function closeModal() { document.getElementById('modal').style.display = 'none'; }
     function checkAuthAnd(cb) { if (!currentUser) showLoginModal(); else cb(); }
     function handleAuthAction() { if (currentUser) { if (confirm("Logout?")) supabaseClient.auth.signOut(); } else showLoginModal(); }
-    function showLoginModal() { showModal(`<h3>Join</h3><input id="email" placeholder="Email"><input id="pass" type="password" placeholder="Pass"><button onclick="processAuth()" class="btn-primary" style="width:100%">Go</button>`); }
+    
+    function showLoginModal() { 
+        showModal(`<h3>Join</h3><input id="email" placeholder="Email"><input id="pass" type="password" placeholder="Pass"><button onclick="processAuth()" class="btn-primary" style="width:100%">Go</button>`); 
+    }
+    
     async function processAuth() {
       const email = document.getElementById('email').value, password = document.getElementById('pass').value;
       let { error } = await supabaseClient.auth.signInWithPassword({ email, password });
@@ -425,7 +433,7 @@
       `).join('');
     }
 
-    window.onload = () => { if(!currentUser) loadAllData(); };
-  </script>
+    window.onload = () => { if(!currentUser && supabaseClient) loadAllData(); };
+</script>
 </body>
 </html>
